@@ -1,12 +1,15 @@
 'use client';
 
 import React, { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Simulation, Comment } from '@/types';
-import PendulumSim from './simulations/PendulumSim';
-import OpticsSim from './simulations/OpticsSim';
-import WaveSim from './simulations/WaveSim';
 import CommentSection from './CommentSection';
 import { Heart, BookOpen, GraduationCap, CheckCircle2, Award, ChevronDown, ChevronUp } from 'lucide-react';
+
+// Dynamically import simulation canvas components with ssr: false to prevent hydration issues
+const PendulumSim = dynamic(() => import('./simulations/PendulumSim'), { ssr: false });
+const OpticsSim = dynamic(() => import('./simulations/OpticsSim'), { ssr: false });
+const WaveSim = dynamic(() => import('./simulations/WaveSim'), { ssr: false });
 
 interface SimulationCardProps {
   simulation: Simulation;
@@ -19,9 +22,33 @@ export default function SimulationCard({
   comments,
   onOpenQuiz
 }: SimulationCardProps) {
-  const [likes, setLikes] = useState<number>(simulation.likes);
+  const [likes, setLikes] = useState<number>(simulation?.likes || 0);
   const [isLiked, setIsLiked] = useState<boolean>(false);
   const [showTeacherNote, setShowTeacherNote] = useState<boolean>(true);
+
+  if (!simulation) return null;
+
+  // Safe fallback getters for camelCase vs snake_case
+  const learningObjectives: string[] = 
+    (Array.isArray(simulation.learningObjectives) && simulation.learningObjectives.length > 0)
+      ? simulation.learningObjectives
+      : (Array.isArray((simulation as any).learning_objectives) && (simulation as any).learning_objectives.length > 0)
+      ? (simulation as any).learning_objectives
+      : [
+          '시뮬레이션 변수 조작을 통해 자연 법칙을 탐구한다.',
+          '실험 결과를 그래프 및 수치로 분석한다.',
+          '생활 속 과학 기술과의 연계성을 설명할 수 있다.'
+        ];
+
+  const teacherNote: string = 
+    simulation.teacherNote || 
+    (simulation as any).teacher_note || 
+    '💡 [교사 지도 Tip]: 변수를 하나씩 변경하며 대조군과 실험군의 차이를 관찰하도록 지도해 주세요.';
+
+  const targetGrade: string = 
+    simulation.targetGrade || 
+    (simulation as any).target_grade || 
+    '중·고등학교 공통 교육과정';
 
   const handleLikeToggle = async () => {
     const nextLiked = !isLiked;
@@ -47,13 +74,13 @@ export default function SimulationCard({
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-              {simulation.subject}
+              {simulation.subject || '과학'}
             </span>
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-slate-500/10 text-slate-600 dark:text-slate-300 border border-slate-300/30">
-              {simulation.targetGrade}
+              {targetGrade}
             </span>
             <span className="text-xs text-slate-400">
-              작성: {simulation.author}
+              작성: {simulation.author || '김선은 교사'}
             </span>
           </div>
           <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
@@ -104,7 +131,7 @@ export default function SimulationCard({
           학습 성취 기준 및 탐구 목표
         </h5>
         <ul className="grid grid-cols-1 md:grid-cols-3 gap-2">
-          {simulation.learningObjectives.map((obj, i) => (
+          {learningObjectives.map((obj, i) => (
             <li
               key={i}
               className="text-xs text-slate-600 dark:text-slate-300 bg-white/50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-white/40 dark:border-slate-700/50 flex items-start gap-1.5"
@@ -136,7 +163,7 @@ export default function SimulationCard({
         </button>
         {showTeacherNote && (
           <div className="glass-panel p-3.5 rounded-xl border-l-4 border-l-blue-500 text-xs text-slate-700 dark:text-slate-200 bg-blue-50/30 dark:bg-blue-950/20">
-            {simulation.teacherNote}
+            {teacherNote}
           </div>
         )}
       </div>
@@ -161,7 +188,7 @@ export default function SimulationCard({
       {/* Student Comments Section */}
       <CommentSection
         simulationId={simulation.id}
-        initialComments={comments}
+        initialComments={comments || []}
       />
     </article>
   );

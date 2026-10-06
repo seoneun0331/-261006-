@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Comment } from '@/types';
 import { Send, MessageSquare, User, Clock, Trash2 } from 'lucide-react';
 
@@ -12,14 +12,20 @@ interface CommentSectionProps {
 
 export default function CommentSection({
   simulationId,
-  initialComments,
+  initialComments = [],
   onCommentAdded
 }: CommentSectionProps) {
-  const [comments, setComments] = useState<Comment[]>(initialComments);
+  const [comments, setComments] = useState<Comment[]>(initialComments || []);
   const [studentName, setStudentName] = useState('');
   const [gradeClass, setGradeClass] = useState('');
   const [content, setContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (Array.isArray(initialComments)) {
+      setComments(initialComments);
+    }
+  }, [initialComments]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +43,6 @@ export default function CommentSection({
     };
 
     try {
-      // Try calling API Route
       const res = await fetch('/api/comments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -45,14 +50,12 @@ export default function CommentSection({
       });
       if (res.ok) {
         const saved = await res.json();
-        setComments(prev => [saved, ...prev]);
+        setComments(prev => [saved, ...(prev || [])]);
       } else {
-        // Fallback local addition
-        setComments(prev => [newComment, ...prev]);
+        setComments(prev => [newComment, ...(prev || [])]);
       }
-    } catch (err) {
-      // Network/local fallback
-      setComments(prev => [newComment, ...prev]);
+    } catch {
+      setComments(prev => [newComment, ...(prev || [])]);
     }
 
     setContent('');
@@ -61,10 +64,10 @@ export default function CommentSection({
   };
 
   const handleDelete = async (id: string) => {
-    setComments(prev => prev.filter(c => c.id !== id));
+    setComments(prev => (prev || []).filter(c => c.id !== id));
     try {
       await fetch(`/api/comments?id=${id}`, { method: 'DELETE' });
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -78,13 +81,15 @@ export default function CommentSection({
     }
   };
 
+  const safeComments = Array.isArray(comments) ? comments : [];
+
   return (
     <div className="mt-6 flex flex-col gap-5 pt-5 border-t border-slate-200/60 dark:border-slate-800/60">
       {/* Title */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
           <MessageSquare className="w-4 h-4 text-blue-500" />
-          학생 탐구 의견 및 질문 ({comments.length})
+          학생 탐구 의견 및 질문 ({safeComments.length})
         </h4>
         <span className="text-[11px] text-slate-400">자유롭게 생각을 나눠보세요</span>
       </div>
@@ -136,12 +141,12 @@ export default function CommentSection({
 
       {/* Comment List */}
       <div className="flex flex-col gap-3">
-        {comments.length === 0 ? (
+        {safeComments.length === 0 ? (
           <div className="text-center py-6 text-xs text-slate-400">
             아직 등록된 학생 의견이 없습니다. 첫 의견을 남겨보세요!
           </div>
         ) : (
-          comments.map((c) => (
+          safeComments.map((c) => (
             <div
               key={c.id}
               className="glass-panel p-3.5 rounded-xl border border-white/50 flex flex-col gap-1.5 hover:shadow-md transition-shadow relative group"

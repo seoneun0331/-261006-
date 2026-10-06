@@ -7,7 +7,7 @@ import QuizModal from '@/components/QuizModal';
 import LeaderboardModal from '@/components/LeaderboardModal';
 import { Simulation, Comment, LeaderboardEntry } from '@/types';
 import { INITIAL_SIMULATIONS, INITIAL_COMMENTS, INITIAL_LEADERBOARD } from '@/lib/mockData';
-import { Sparkles, Compass, Lightbulb, Database, Globe, CheckCircle } from 'lucide-react';
+import { Sparkles, Database } from 'lucide-react';
 
 export default function HomePage() {
   const [simulations, setSimulations] = useState<Simulation[]>(INITIAL_SIMULATIONS);
@@ -17,9 +17,10 @@ export default function HomePage() {
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [activeQuizSim, setActiveQuizSim] = useState<Simulation | null>(null);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState<boolean>(false);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
 
-  // Fetch initial data
   useEffect(() => {
+    setIsMounted(true);
     async function loadData() {
       try {
         const [simRes, comRes, lbRes] = await Promise.all([
@@ -29,15 +30,15 @@ export default function HomePage() {
         ]);
         if (simRes.ok) {
           const simData = await simRes.json();
-          if (simData && simData.length > 0) setSimulations(simData);
+          if (Array.isArray(simData) && simData.length > 0) setSimulations(simData);
         }
         if (comRes.ok) {
           const comData = await comRes.json();
-          if (comData && comData.length > 0) setComments(comData);
+          if (Array.isArray(comData) && comData.length > 0) setComments(comData);
         }
         if (lbRes.ok) {
           const lbData = await lbRes.json();
-          if (lbData && lbData.length > 0) setLeaderboard(lbData);
+          if (Array.isArray(lbData) && lbData.length > 0) setLeaderboard(lbData);
         }
       } catch {
         // Safe mock fallback
@@ -46,13 +47,18 @@ export default function HomePage() {
     loadData();
   }, []);
 
-  const filteredSimulations = simulations.filter((s) => {
+  const safeSimulations = Array.isArray(simulations) ? simulations : INITIAL_SIMULATIONS;
+  const safeComments = Array.isArray(comments) ? comments : INITIAL_COMMENTS;
+  const safeLeaderboard = Array.isArray(leaderboard) ? leaderboard : INITIAL_LEADERBOARD;
+
+  const filteredSimulations = safeSimulations.filter((s) => {
+    if (!s) return false;
     if (activeFilter === 'all') return true;
     return s.subject === activeFilter;
   });
 
   const handleScoreSubmitted = (entry: LeaderboardEntry) => {
-    setLeaderboard(prev => [entry, ...prev]);
+    setLeaderboard(prev => [entry, ...(prev || [])]);
   };
 
   return (
@@ -133,7 +139,7 @@ export default function HomePage() {
             <SimulationCard
               key={sim.id}
               simulation={sim}
-              comments={comments.filter((c) => c.simulationId === sim.id)}
+              comments={safeComments.filter((c) => c.simulationId === sim.id)}
               onOpenQuiz={(s) => setActiveQuizSim(s)}
             />
           ))}
@@ -151,7 +157,7 @@ export default function HomePage() {
           </div>
           <div className="flex items-center gap-4 text-[11px]">
             <span>Region: Seoul (icn1 / ap-northeast-2)</span>
-            <span>Next.js 14 & Supabase</span>
+            <span>Next.js 14 &amp; Supabase</span>
             <span>© 2026 김선은 교사 All rights reserved.</span>
           </div>
         </div>
@@ -170,7 +176,7 @@ export default function HomePage() {
       <LeaderboardModal
         isOpen={isLeaderboardOpen}
         onClose={() => setIsLeaderboardOpen(false)}
-        entries={leaderboard}
+        entries={safeLeaderboard}
       />
     </div>
   );

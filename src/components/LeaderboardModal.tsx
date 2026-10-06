@@ -13,11 +13,12 @@ interface LeaderboardModalProps {
 export default function LeaderboardModal({
   isOpen,
   onClose,
-  entries
+  entries = []
 }: LeaderboardModalProps) {
   if (!isOpen) return null;
 
-  const sorted = [...entries].sort((a, b) => b.score - a.score);
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  const sorted = [...safeEntries].sort((a, b) => (b.score || 0) - (a.score || 0));
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in">
